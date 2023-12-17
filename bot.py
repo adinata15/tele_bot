@@ -1,10 +1,10 @@
 import os
 import sys
-from telegram.ext import *
-from telegram import *
+from telegram import Update
+from telegram.ext import ApplicationBuilder, ContextTypes, CommandHandler
 from dotenv import load_dotenv
 import yfinance as yahooFinance
-import pandas as pd
+# import pandas as pd
 import logging
 
 logging.basicConfig(format='[%(asctime)s][%(funcName)s(%(lineno)d)][%(levelname)s]:%(message)s', level=logging.INFO, filename="logs/info.log")
@@ -100,7 +100,7 @@ HEROKU_URL = os.environ.get('HEROKU_URL')
 #     bot.reply_to(message, "Here are some of the function we support for now:\
 #                  \n /hello : this will start bot execution \n")
 
-def send_welcome(update, context):
+async def send_welcome(update: Update, context: ContextTypes.DEFAULT_TYPE):
     logging.info(f"Entered function")
     print(f"Update: {update}")
     # print_object(update)
@@ -109,7 +109,8 @@ def send_welcome(update, context):
 
     user = update.message.from_user
     # msg = update.message.text
-    context.bot.send_message(chat_id = update.effective_chat.id, text = "Hi, how can I help you?")
+    # await == async wait (we are telling the program -> while waiting for this you can do other stuff first)
+    await context.bot.send_message(chat_id = update.effective_chat.id, text = "Hi, how can I help you?")
 
 # @bot.message_handler(func=lambda msg: True)
 # def echo_all(message):
@@ -144,7 +145,7 @@ def print_object(generic_object: object, ignored_keys: list = None) -> str:
 #     for key, value in stock_ticker.info.items():
 #         print(key, ":", value)
 
-def log_error(update, context):
+def log_error(update: Update, context: ContextTypes.DEFAULT_TYPE):
     logging.warning(f'Update {update} caused error {context.error}')
 
 if __name__ == "__main__":
@@ -155,18 +156,25 @@ if __name__ == "__main__":
     logging.debug(f"Running on {sys.argv[1]} mode")
     # TBD :register/login account
 
-    updater = Updater(BOT_TOKEN, use_context=True)
-    disp = updater.dispatcher
-    disp.add_handler(CommandHandler('start', send_welcome))
-    disp.add_error_handler(log_error)
+    application = ApplicationBuilder().token(BOT_TOKEN).build()
     
-    # print(get_company_historical_data(company_ticker))
+    start_handler = CommandHandler('start', send_welcome)
+    application.add_handler(start_handler)
+    
+    application.add_error_handler(log_error)
+
     arguments = sys.argv
     if(sys.argv[1] == 'devel'):
-        updater.start_polling()
-        updater.idle()
+        application.run_polling()
     elif(sys.argv[1] == 'deploy'):
-        updater.start_webhook(listen="0.0.0.0",port=int(PORT),url_path=BOT_TOKEN)
-        updater.bot.setWebhook(HEROKU_URL + BOT_TOKEN)
+        # to be reviewed
+        application.run_webhook(
+            listen='0.0.0.0',
+            port=PORT,
+            webhook_url=HEROKU_URL
+        )
+
+        # updater.start_webhook(listen="0.0.0.0",port=int(PORT),url_path=BOT_TOKEN)
+        # updater.bot.setWebhook(HEROKU_URL + BOT_TOKEN)
         
 
