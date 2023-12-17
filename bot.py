@@ -7,7 +7,7 @@ import yfinance as yahooFinance
 # import pandas as pd
 import logging
 
-logging.basicConfig(format='[%(asctime)s][%(funcName)s(%(lineno)d)][%(levelname)s]:%(message)s', level=logging.INFO, filename="logs/info.log")
+logging.basicConfig(format='[%(asctime)s][%(funcName)s(%(lineno)d)][%(levelname)s]:%(message)s', level=logging.INFO)
 
 load_dotenv()
 BOT_TOKEN = os.environ.get('BOT_TOKEN')
