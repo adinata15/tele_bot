@@ -1,6 +1,6 @@
 import os
 import sys
-from telegram import Update
+from telegram import Update, BotCommand, constants
 from telegram.ext import ApplicationBuilder, ContextTypes, CommandHandler
 from dotenv import load_dotenv
 import yfinance as yahooFinance
@@ -80,19 +80,16 @@ HEROKU_URL = os.environ.get('HEROKU_URL')
 #         printable = print_object(historical_data, ignored_keys=["companyOfficers", "longBusinessSummary"])
 #         tele_safe_send(message, printable)
 
-# @bot.message_handler(commands=['info'])
-# def send_company_info(message):
-#     logging.info(f"Entered function")
-#     if(message.content_type != 'text'):
-#         bot.reply_to(message, "Please input the code of the shares in text format")
-#         return
-    
-#     tokens = message.text.split()
-#     if(len(tokens) == 2):
-#         logging.info(f"Valid tokens amount")
-#         company_ticker = get_company_ticker_from_stock_code(tokens[1])
-#         printable = print_object(company_ticker.info, ignored_keys=["companyOfficers", "longBusinessSummary"])
-#         tele_safe_send(message, printable)
+async def send_company_info(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    logging.info(f"Entered function")
+    message = update.message.text
+ 
+    tokens = message.split()
+    if(len(tokens) == 2):
+        logging.info(f"Valid tokens amount")
+        company_ticker = get_company_ticker_from_stock_code(tokens[1])
+        printable = print_object(company_ticker.info, ignored_keys=["companyOfficers", "longBusinessSummary"])
+        await tele_safe_send(context, update, data=printable)
 
 # @bot.message_handler(commands=['help'])
 # def send_help(message):
@@ -102,34 +99,34 @@ HEROKU_URL = os.environ.get('HEROKU_URL')
 
 async def send_welcome(update: Update, context: ContextTypes.DEFAULT_TYPE):
     logging.info(f"Entered function")
-    print(f"Update: {update}")
-    # print_object(update)
-    print(f"Context: {context}")
-    # print_object(context)
+    await context.bot.send_message(chat_id = update.effective_chat.id, text = "Hi, this is all the help i can give. Blame the dev")
 
-    user = update.message.from_user
-    # msg = update.message.text
-    # await == async wait (we are telling the program -> while waiting for this you can do other stuff first)
-    await context.bot.send_message(chat_id = update.effective_chat.id, text = "Hi, how can I help you?")
+async def send_settings(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    logging.info(f"Entered function")
+    await context.bot.send_message(chat_id = update.effective_chat.id, text = "In progress")
+
+async def send_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    logging.info(f"Entered function")
+    await context.bot.send_message(chat_id = update.effective_chat.id, text = "This si all the help i can give. Blame the dev!")
 
 # @bot.message_handler(func=lambda msg: True)
 # def echo_all(message):
 #     bot.reply_to(message, message.text)
 
-# def tele_safe_send(message, data: str):
-#     logging.info(f"Entered function")
+async def tele_safe_send(context: ContextTypes, update: Update, data: str):
+    logging.info(f"Entered function")
 
-#     if len(data) >= 4096:
-#         for x in range(0, len(data), 4096):
-#             bot.reply_to(message, data[x:x+4096])
-#     else:
-#         bot.reply_to(message, data)
+    if len(data) >= 4096:
+        for x in range(0, len(data), 4096):
+            await context.bot.send_message(chat_id = update.effective_chat.id, text = data[x:x+4096])
+    else:
+        await context.bot.send_message(chat_id = update.effective_chat.id, text = data)
 
 # def get_company_historical_data(stock_ticker: yahooFinance.Ticker) -> pd.DataFrame:
 #     return stock_ticker.history(period="1d", interval="1m")
 
-# def get_company_ticker_from_stock_code(stock_code:str) -> yahooFinance.Ticker:
-#     return yahooFinance.Ticker(stock_code)
+def get_company_ticker_from_stock_code(stock_code:str) -> yahooFinance.Ticker:
+    return yahooFinance.Ticker(stock_code)
 
 def print_object(generic_object: object, ignored_keys: list = None) -> str:
     logging.info(f"Entered function")
@@ -146,7 +143,14 @@ def print_object(generic_object: object, ignored_keys: list = None) -> str:
 #         print(key, ":", value)
 
 def log_error(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    logging.warning(f'Update {update} caused error {context.error}')
+    logging.warning(f'Update {update.effective_message} caused error {context.error}')
+
+async def post_init(application: ApplicationBuilder) -> None:
+    await application.bot.set_my_commands([
+        BotCommand('/start', 'Starts the bot'),
+        BotCommand('/settings', 'User settings'),
+        BotCommand('/help', 'Get help for commands')
+    ])
 
 if __name__ == "__main__":
     if(len(sys.argv) != 2):
@@ -156,10 +160,19 @@ if __name__ == "__main__":
     logging.debug(f"Running on {sys.argv[1]} mode")
     # TBD :register/login account
 
-    application = ApplicationBuilder().token(BOT_TOKEN).build()
+    application = ApplicationBuilder().token(BOT_TOKEN).post_init(post_init).build()
     
     start_handler = CommandHandler('start', send_welcome)
     application.add_handler(start_handler)
+    
+    help_handler = CommandHandler('help', send_help)
+    application.add_handler(help_handler)
+
+    settings_handler = CommandHandler('settings', send_settings)
+    application.add_handler(settings_handler)
+
+    info_handler = CommandHandler('info', send_company_info)
+    application.add_handler(info_handler)
     
     application.add_error_handler(log_error)
 
